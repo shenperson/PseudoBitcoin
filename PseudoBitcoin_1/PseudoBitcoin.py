@@ -9,20 +9,20 @@ class Block(object):
         self.time = int(time.time())
         self.Height = Height
         self.Nonce = 0
-        self.bits = 16
+        self.bits = 8
         self.data = self.transaction+str(self.PrevBlockHash)+str(self.time)
         self.Hash = self.setHash()
 
     def setHash(self):
         self.Hash = hashlib.sha256(
             (self.data + str(self.Nonce)).encode('utf-8')).hexdigest()
-        print(type(self.Hash))
 
     def mine(self):
-        while  (int(hashlib.sha256(
-                (self.data + str(self.Nonce)).encode('utf-8')).hexdigest(), 16) & (int('1'*self.bits) << (256-self.bits))):
-            self.Nonce += 1
-            # self.setHash()
+        self.Hash = hashlib.sha256(
+            (self.data + str(self.Nonce)).encode('utf-8')).hexdigest()
+
+        while int(self.Hash,16)>>(256-self.bits):
+            self.Nonce += 1 
             self.Hash = hashlib.sha256(
                 (self.data + str(self.Nonce)).encode('utf-8')).hexdigest()
             print(self.Hash, '\r'*64, end='')
