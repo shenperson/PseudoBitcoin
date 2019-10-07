@@ -120,28 +120,19 @@ def test2():
         filename = './ShenCoin.json'
         blockchain = Blockchain()
         blockchain.readDB(filename)
-        if sys.argv[1] == 'addblock':
-            if len(sys.argv) == 4:
-                if sys.argv[2] ==  '-transaction' or sys.argv[2] == '-t':
-                    blockchain.addBlock(sys.argv[3])
-                    blockchain.writeDB(filename)
-                else:
-                    printUsage()
-            else:
-                printUsage()
+        if sys.argv[1] == 'addblock' and len(sys.argv) == 4 and (sys.argv[2] ==  '-transaction' or sys.argv[2] == '-t'):
+            blockchain.addBlock(sys.argv[3])
+            blockchain.writeDB(filename)
+
         elif (sys.argv[1] == 'printchain'):
             blockchain.print()
-        elif (sys.argv[1] == 'printblock'):
-            if len(sys.argv) == 4:
-                if sys.argv[2] ==  '-height' or sys.argv[2] == '-h':
-                    try:
-                        blockchain.chain[int(sys.argv[3])].print()
-                    except:
-                        print('Please enter a number less than the height({})'.format(len(blockchain.chain)))
-                else:
-                    printUsage()
-            else:
-                printUsage()
+            
+        elif (sys.argv[1] == 'printblock') and len(sys.argv) == 4 and (sys.argv[2] ==  '-height' or sys.argv[2] == '-h'):
+            try:
+                blockchain.chain[int(sys.argv[3])].print()
+            except:
+                print('Please enter a number less than the height({})'.format(len(blockchain.chain)))
+
         else:
             printUsage()
 
