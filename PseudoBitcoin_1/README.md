@@ -16,7 +16,7 @@
     - [x] Proof of Work
 - Persistence
     - [x] Database
-    - [ ] Client
+    - [x] Client
 - Transaction (basic)
     - [ ] UTXO
     - [ ] Account model
