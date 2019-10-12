@@ -3,6 +3,7 @@ import hashlib
 import json
 from collections import namedtuple
 import sys
+import UTXO
 
 BITS = 8
 
@@ -15,14 +16,16 @@ class AdvancedJSONEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 class Block(object):
-    def __init__(self, Height:int, transaction:str,PrevBlockHash='',time=int(time.time()),Nonce=0,bits=BITS,Hash=''):
+    def __init__(self, Height:int, transaction:list,PrevBlockHash='',time=int(time.time()),Nonce=0,bits=BITS,Hash=''):
         self.transaction = transaction
+        self.tx = ''
+        for i in transaction:
+            self.tx += i.toStr()
         self.PrevBlockHash = PrevBlockHash
         self.time = time
         self.Height = Height
         self.Nonce = Nonce
         self.bits = BITS
-        self.data = self.transaction+str(self.PrevBlockHash)+str(self.time)
         self.Hash = Hash
 
     @classmethod
@@ -32,18 +35,18 @@ class Block(object):
 
     def setHash(self):
         self.Hash = hashlib.sha256(
-            (self.transaction+str(self.PrevBlockHash)+str(self.time) + str(self.Nonce)).encode('utf-8')).hexdigest()
+            (self.tx+str(self.PrevBlockHash)+str(self.time) + str(self.Nonce)).encode('utf-8')).hexdigest()
 
     def mine(self):
         self.Hash = hashlib.sha256(
-            (self.transaction+str(self.PrevBlockHash)+str(self.time) + str(self.Nonce)).encode('utf-8')).hexdigest()
+            (self.tx+str(self.PrevBlockHash)+str(self.time) + str(self.Nonce)).encode('utf-8')).hexdigest()
 
         while int(self.Hash,16)>>(256-self.bits):
             self.Nonce += 1 
             self.Hash = hashlib.sha256(
-                (self.transaction+str(self.PrevBlockHash)+str(self.time) + str(self.Nonce)).encode('utf-8')).hexdigest()
+                (self.tx+str(self.PrevBlockHash)+str(self.time) + str(self.Nonce)).encode('utf-8')).hexdigest()
             print(self.Hash, '\r'*64, end='')
-        print("block mined :")
+        print("block mined :"+' '*52)
         self.print()
 
     def __jsonencode__(self):
@@ -53,7 +56,7 @@ class Block(object):
         print('{')
         print('  Height :',self.Height)
         print('  Time :',self.time)
-        print('  Transaction :',self.transaction)
+        print('  Transaction :',self.tx)
         print('  PrevBlockHash :',self.PrevBlockHash)
         print('  Hash :',self.Hash)
         print('},')    
@@ -62,21 +65,22 @@ class Block(object):
 class Blockchain(object):
     def __init__(self):
         self.chain = []
-
-    def addGenesisBlock(self, transaction):
-        newBlock = Block(0, transaction, '')
+    
+    ### add block
+    def addGenesisBlock(self,ID, miner):
+        # newBlock = Block(0, transaction, '')
+        newBlock = Block(0, [UTXO.newCoinbaseTX(ID,miner).tx], '')
         newBlock.mine()
         self.chain.append(newBlock)
 
     def addBlock(self, transaction):
-        if len(self.chain)==0:
-            addGenesisBlock(transaction)
-            return
+
         prevBlock = self.chain[-1]
         newBlock = Block(len(self.chain), transaction, prevBlock.Hash)
         newBlock.mine()
         self.chain.append(newBlock)
 
+    ### DB
     def writeDB(self,path):
         with open (path,'w') as json_file:
             json_file.write(json.dumps(self.chain,cls=AdvancedJSONEncoder,indent=2))
@@ -86,11 +90,13 @@ class Blockchain(object):
             data = json.load(json_file)
             for i in data:
                 self.chain.append(Block.fromJSON(i))
-                
+
+    ### print 
     def print(self):
         for i in self.chain:
             i.print()
 
+    ### check
     def isValid(self):
         if len(self.chain)>1:
             for i,block in enumerate(self.chain[:-2]):
@@ -98,7 +104,35 @@ class Blockchain(object):
                     return False
             return True
         return True
-            
+    
+    ### UTXO
+    def findUTXO(self,name):
+        utxo = []
+        acc = 0
+        for i in self.chain:
+            for tx in i.transaction:
+                find,out,_acc = tx.searchName(name)
+                if find:
+                    acc += _acc
+                if out:
+                    utxo.append(tx)
+
+        return acc, utxo
+
+    def check(self,txi,txo,name):
+        acc , utxo = self.findUTXO(name)
+        for tx in utxo:
+            for vo in tx.Vout:
+                if vo.ScriptPubKey == name:
+                    txi.append(UTXO.TXInput(tx.ID,vo.Value,name))
+                    vo.spent =True
+        if acc < txo[0].Value:
+            print('No enough funds')
+            return False
+        if acc > txo[0].Value:
+            txo.append(UTXO.TXOutput(acc - txo[0].Value,name))
+        return True
+
 
 def test1():
     a = Blockchain()
@@ -133,9 +167,33 @@ def test2():
             except:
                 print('Please enter a number less than the height({})'.format(len(blockchain.chain)))
 
+        elif sys.argv[1]=='clear':
+            pass
         else:
             printUsage()
 
+def test3():
+    a = Blockchain()
+    a.addGenesisBlock('TX00','Alice')
+
+    txi = []
+    txo = [UTXO.TXOutput(10, 'Bob')]
+    
+    if a.check(txi,txo, 'Alice'):
+        tx1 = UTXO.Transaction('TX01',txi,txo)
+        a.addBlock([tx1])
+
+    txi = []
+    txo = [UTXO.TXOutput(5, 'Cat')]
+    if a.check(txi, txo, 'Bob'):
+        tx1 = UTXO.Transaction('TX02', txi, txo)
+        a.addBlock([tx1])
+    
+    txi = []
+    txo = [UTXO.TXOutput(5, 'Cat')]
+    if a.check(txi, txo, 'Alice'):
+        tx1 = UTXO.Transaction('TX03', txi, txo)
+        a.addBlock([tx1])
 
 if __name__ == '__main__':
-    test2()
+    test3()
