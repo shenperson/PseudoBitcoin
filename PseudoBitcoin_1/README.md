@@ -42,7 +42,8 @@
     - [x] Database
     - [x] Client
 - Transaction (basic)
-    - [x] UTXO / [ ] Account model
+    - [x] UTXO
+    - [ ] Account model
 - Address
     - [ ] Sign & Verify
 - Transaction (advanced)
