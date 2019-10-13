@@ -1,5 +1,5 @@
 from PseudoBitcoin import Blockchain
-
+import json
 mining_reward = 100
 # reward of mining a new block
 
@@ -10,12 +10,24 @@ class TXInput(object):
         self.Vout = Vout
         self.ScriptSig = ScriptSig
 
+    @classmethod
+    def fromJSON(cls, vi) -> 'TXInput':
+        # vi = json.loads(data, object_hook=lambda d: namedtuple(
+        #     'X', d.keys())(*d.values()))
+        return cls(Txid=vi.Txid, Vout=vi.Vout, ScriptSig=vi.ScriptSig)
+
 
 class TXOutput(object):
-    def __init__(self, Value, ScriptPubKey):
+    def __init__(self, Value, ScriptPubKey, spent=False):
         self.Value = Value
         self.ScriptPubKey = ScriptPubKey
-        self.spent = False
+        self.spent = spent
+
+    @classmethod
+    def fromJSON(cls, vo) -> 'TXOutput':
+        # vo = json.loads(data, object_hook=lambda d: namedtuple(
+        #     'X', d.keys())(*d.values()))
+        return cls(Value=vo.Value, ScriptPubKey=vo.ScriptPubKey, spent=vo.spent)
 
 
 class Transaction(object):
@@ -23,6 +35,17 @@ class Transaction(object):
         self.ID = ID
         self.Vin = Vin
         self.Vout = Vout
+
+    @classmethod
+    def fromJSON(cls, tx) -> 'Transaction':
+        # tx = json.loads(data, object_hook=lambda d: namedtuple(
+        #     'X', d.keys())(*d.values()))
+        vin, vout = [], []
+        for vi in tx.Vin:
+            vin.append(TXInput.fromJSON(vi))
+        for vo in tx.Vout:
+            vout.append(TXOutput.fromJSON(vo))
+        return cls(ID=tx.ID, Vin=vin, Vout=vout)
 
     def searchName(self, name):
         find = False
@@ -53,7 +76,7 @@ class Transaction(object):
 
 class newCoinbaseTX(object):
     def __init__(self, ID, to_addr, data=''):
-        txin = TXInput([], -1, data)
+        txin = TXInput('', -1, data)
         txout = TXOutput(mining_reward, to_addr)
         self.tx = Transaction(ID, [txin], [txout])
 
